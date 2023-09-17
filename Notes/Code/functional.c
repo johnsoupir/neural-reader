@@ -7,8 +7,8 @@
 #define TRAING_DATA_PATH "image.idx"
 
 
-float const EPS = 0.01;		//Learning rate
-float const ERROR = 0.4;	//Target ERROR
+float const EPS = 0.1;		//Learning rate
+float const ERROR = 0.01;	//Target ERROR
 // float const ERROR = 0.0001;	//Target ERROR
 
 
@@ -18,7 +18,7 @@ float const ERROR = 0.4;	//Target ERROR
 //#define ERROR 0.0001
 // #define EPS 0.2
 #define N 784
-#define T 4
+#define T 2
 
 
 
@@ -69,7 +69,7 @@ void seed3D(double array[N][N][T+1])
     for (uint32_t x = 0; x < N; x++) {
         for (uint32_t y = 0; y < N; y++) {
             for (uint32_t z = 0; z < T+1; z++) {
-                array[x][y][z] = (double) (rand() % 1000) / 1000.0;
+                array[x][y][z] = ((double) rand() / RAND_MAX) * 2.0 - 1.0;//(double) (rand() % 1000) / 1000.0;
             }
         }
     }
@@ -81,7 +81,7 @@ void seed2D(double array[N][T+1])
 {
     for (uint32_t y = 0; y < N; y++) {
         for (uint32_t x = 0; x < T+1; x++) {
-            array[y][x] = (double) (rand() % 1000) / 1000.0;
+            array[y][x] = ((double) rand() / RAND_MAX) * 2.0 - 1.0;// (double) (rand() % 1000) / 1000.0;
         }
     }
 }
@@ -153,7 +153,7 @@ int main()
 
     printf("The label data contains:\n  %d labels\n", labelCount);
     printf("Alloc label mem\n");
-    char labels[labelCount];
+    uint8_t labels[labelCount];
 
     for(uint32_t labelIndex = 0; labelIndex < labelCount; labelIndex++)
     {
@@ -168,9 +168,54 @@ int main()
 	printf("Seeding B and R randomly...\n");
 	//Randomly INIT B and R matrix
 	seed3D(R);
-	//print3DArray(R);
+	// print3DArray(R);
 	seed2D(B);
 	//print2DArray(B);
+
+
+
+
+
+
+
+/*    PRINTING IMAGES TO SCREEN    */
+            printf("__________PRINTING TEST IMAGES TO SCREEN________\n");
+    uint32_t chosenImage = 1;
+    for(int blah=0; blah < 10; blah++)
+    {
+        chosenImage=blah;
+        for(uint8_t printRow = 0; printRow < imageRows; printRow++)
+        {
+            printf("\n");
+            for(uint8_t printCol = 0; printCol < imageCols; printCol++)
+            {
+					printf("Value %d at %d %d %d ", image[chosenImage][printRow][printCol], chosenImage, printCol, printRow);///255.00;
+                if (image[chosenImage][printRow][printCol] > 128)
+                {
+                    printf("▇\n");
+                }
+                else
+                {
+                    printf(" \n");
+                }
+
+
+            }
+            printf("\n");
+        }
+        printf("The solution is %d\n", labels[chosenImage]);
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -178,14 +223,14 @@ int main()
 	imageCount=100;
 	
 	// cost=ERROR+10;
-	while(epochs < 100)
-	// while( cost > ERROR )
+	// while(epochs < 100)
+	while( cost > ERROR )
 	{
 		for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
 		{
 			// Main training loop
 		    // printf("\rLoaded sample %d into %d neurons.", imageIndex, mu);
-		    printf("\n Training epoch %d >> Sample %d\tError %6.0f\tCycle %d",epochs, imageIndex, cost, cycles);
+		    printf("\n Training epoch %ld >> Sample %d\tError %6.0f\tCycle %ld",epochs, imageIndex, cost, cycles);
 
 
 			//Fill starting X with samples, Y with labels
@@ -196,8 +241,10 @@ int main()
 			{
 				for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
 				{
-					X[mu][0] = image[imageIndex][columnIndex][rowIndex]/255;
-					Y[mu] = labels[imageIndex];
+					X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex];///255.00;
+					// printf("X-Value %d at %d %d %d\n ", image[imageIndex][rowIndex][columnIndex], imageIndex, columnIndex, rowIndex);///255.00;
+					Y[mu] = (double)labels[imageIndex]/10.0;
+			        // printf("Neuron %ld=%f, L=%f ",mu, X[mu][0], Y[mu]);
 					mu++;
 				}
 			}
@@ -248,6 +295,24 @@ int main()
 				}
 			}
 
+			float sum=0;
+
+			for (int i = 0; i < N; i++)
+			{
+				sum += X[i][T];
+				if (X[i][T] != 1.00)
+				{
+					// printf("END-Neuron %d=%f ",i, X[i][T]);
+					/* code */
+				}
+
+			}
+			float output = sum/784.0;
+			float miss = abs(((float)labels[imageIndex]) - output);
+
+			printf("Guessed %f, answer %d, miss of %f", output, labels[imageIndex], miss );
+			
+
 			// calculate cost function
 			cost = 0;
 			for (mu = 0; mu < N; mu++){
@@ -264,6 +329,7 @@ int main()
 	}
 	
 
+return 0;
 
 
 printf("We've come so far, and and tried so hard. \n In the end: \n");
@@ -287,8 +353,8 @@ printf("We've come so far, and and tried so hard. \n In the end: \n");
 		{
 			for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
 			{
-				X[mu][0] = image[imageIndex][columnIndex][rowIndex];
-				Y[mu] = labels[imageIndex];
+				X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex];
+				Y[mu] = (double)labels[imageIndex];
 				mu++;
 			}
 		}
@@ -317,6 +383,12 @@ printf("We've come so far, and and tried so hard. \n In the end: \n");
 		for (int i = 0; i < N; i++)
 		{
 			sum += X[i][T];
+			if (X[i][T] != 1.00)
+			{
+				printf("END-Neuron %d=%f ",i, X[i][T]);
+				/* code */
+			}
+			
 		}
 		float output = sum/784.0;
 		printf("%f. And the answer is %d/n",output, labels[imageIndex]);
