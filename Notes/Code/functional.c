@@ -7,26 +7,20 @@
 #define TRAING_DATA_PATH "image.idx"
 
 
-float const EPS = 0.2;		//Learning rate
-float const ERROR = 0.0001;	//Target ERROR
+float const EPS = 0.01;		//Learning rate
+float const ERROR = 0.4;	//Target ERROR
+// float const ERROR = 0.0001;	//Target ERROR
 
 
 // Allocate memory for B, R, 
 
-#define ERROR 0.0001
-#define EPS 0.2
+//#define ERROR 0.1
+//#define ERROR 0.0001
+// #define EPS 0.2
 #define N 784
-#define T 2
+#define T 4
 
 
-uint8_t INPUT[4][2] = {
-	{1,1},
-	{1,0},
-	{0,1},
-	{0,0}
-};
-
-uint8_t OUTPUT[4] = {1,0,0,0};
 
 double Y[N];
 double R[N][N][T+1];
@@ -35,7 +29,7 @@ double X[N][T+1];
 double Z[N][T+1];
 double dB[N][T+1];
 
-double cost = ERROR + 1;
+double cost = ERROR + 1.0;
 
 uint64_t mu, nu, t=0, cycles=0, epochs=0;
 
@@ -181,10 +175,11 @@ int main()
 
 
 	
-	imageCount=10;
+	imageCount=100;
 	
 	// cost=ERROR+10;
-	while( cost > ERROR )
+	while(epochs < 100)
+	// while( cost > ERROR )
 	{
 		for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
 		{
@@ -201,7 +196,7 @@ int main()
 			{
 				for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
 				{
-					X[mu][0] = image[imageIndex][columnIndex][rowIndex];
+					X[mu][0] = image[imageIndex][columnIndex][rowIndex]/255;
 					Y[mu] = labels[imageIndex];
 					mu++;
 				}
@@ -321,9 +316,9 @@ printf("We've come so far, and and tried so hard. \n In the end: \n");
 
 		for (int i = 0; i < N; i++)
 		{
-			sum += Y[i];
+			sum += X[i][T];
 		}
-		float output = sum/N;
+		float output = sum/784.0;
 		printf("%f. And the answer is %d/n",output, labels[imageIndex]);
 
 
