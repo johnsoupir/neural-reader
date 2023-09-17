@@ -4,6 +4,7 @@
 #include <math.h>
 #include <time.h>
 
+#define TRAING_DATA_PATH "image.idx"
 
 
 float const EPS = 0.2;		//Learning rate
@@ -15,7 +16,7 @@ float const ERROR = 0.0001;	//Target ERROR
 #define ERROR 0.0001
 #define EPS 0.2
 #define N 784
-#define T 20
+#define T 2
 
 
 uint8_t INPUT[4][2] = {
@@ -27,16 +28,16 @@ uint8_t INPUT[4][2] = {
 
 uint8_t OUTPUT[4] = {1,0,0,0};
 
-uint8_t Y[N];
-uint8_t R[N][N][T+1];
-uint8_t B[N][T+1];
-uint8_t X[N][T+1];
-uint8_t Z[N][T+1];
-uint8_t dB[N][T+1];
+double Y[N];
+double R[N][N][T+1];
+double B[N][T+1];
+double X[N][T+1];
+double Z[N][T+1];
+double dB[N][T+1];
 
 double cost = ERROR + 1;
 
-int mu, nu, t=0, cycles=0;
+uint64_t mu, nu, t=0, cycles=0, epochs=0;
 
 
 //Sigma function
@@ -46,44 +47,50 @@ double sigma(double input)
 }
 
 
-
-
-void seedRandom(uint8_t * array, uint32_t rows, uint32_t cols, uint32_t layers)
-{
-	srand(time(NULL));
-
-	if(layers > 1)
-	{
-		//3D Array
-		for(uint32_t layerIndex=0; layerIndex<layers; layerIndex++)
-		{
-			for(uint32_t columnIndex=0; columnIndex<cols; columnIndex++)
-			{
-				for(uint32_t rowIndex=0; rowIndex<rows; rowIndex++)
-				{
-					//FILL ARRAY
-//					*((arr + i*y*z) + (j*z) + k) = 0;
-//					*((arr + i*cols) + j) = (rand()%1000)/1000.0;
-	
-				}
-			}
-		}
-	}
-	else
-	{
-		//2D array
-		for(uint32_t columnIndex=0; columnIndex<=cols; columnIndex++)
-		{
-			for(uint32_t rowIndex=0; rowIndex<rows; rowIndex++)
-			{
-				//FILL ARRAY
-				*((array + columnIndex*cols) + rowIndex) = (rand()%1000)/1.0;
-
-			}
-		}
-	}
+void print3DArray(double array[N][N][T+1]) {
+    for (uint32_t x = 0; x < N; x++) {
+        printf("Layer %u:\n", x);
+        for (uint32_t y = 0; y < N; y++) {
+            for (uint32_t z = 0; z < T+1; z++) {
+                printf("%0.3f ", array[x][y][z]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
 }
 
+
+void print2DArray(double array[N][T+1]) {
+    for (uint32_t x = 0; x < N; x++) {
+        for (uint32_t y = 0; y < T+1; y++) {
+            printf("%0.3f ", array[x][y]);
+        }
+        printf("\n");
+    }
+}
+
+void seed3D(double array[N][N][T+1])
+{
+    for (uint32_t x = 0; x < N; x++) {
+        for (uint32_t y = 0; y < N; y++) {
+            for (uint32_t z = 0; z < T+1; z++) {
+                array[x][y][z] = (double) (rand() % 1000) / 1000.0;
+            }
+        }
+    }
+}
+
+
+
+void seed2D(double array[N][T+1])
+{
+    for (uint32_t y = 0; y < N; y++) {
+        for (uint32_t x = 0; x < T+1; x++) {
+            array[y][x] = (double) (rand() % 1000) / 1000.0;
+        }
+    }
+}
 
 
 
@@ -91,33 +98,115 @@ void seedRandom(uint8_t * array, uint32_t rows, uint32_t cols, uint32_t layers)
 
 int main()
 {
-	for(int i=0; i<4; i++)
-	{
-		for(int j=0; j<2; j++)
-		{
-			printf("%d\t",INPUT[i][j]);
-		}
-		printf("\n");
-	}
-	
-	printf("Seeding random\n");
+    /*     LOAD IMAGE DATA     */
+    FILE * trainingData = fopen("./image.idx", "rb");
 
-	seedRandom((uint8_t *)INPUT,4,2,1);
+    if (trainingData == NULL)
+    {
+        printf("\nERROR OPENING TRAINING DATA!!!\n");
+    }
+    else
+    {
+        printf("Opened training data.\n");
+    }
+
+    uint32_t magicNumber, imageCount, imageRows, imageCols;
+    fread(&magicNumber, 4, 1, trainingData);
+    fread(&imageCount, 4, 1, trainingData);
+    fread(&imageCols, 4, 1, trainingData);
+    fread(&imageRows, 4, 1, trainingData);
+    magicNumber = __builtin_bswap32(magicNumber);
+    imageCount = __builtin_bswap32(imageCount);
+    imageCols = __builtin_bswap32(imageCols);
+    imageRows = __builtin_bswap32(imageRows);
+
+    printf("The training data contains:\n  %d images\n  Resolution %d x %d\n", imageCount, imageCols, imageRows);
+    printf("Allocating %d bytes of memory.\n", imageCols*imageCols*imageCount);
+    uint8_t (*image)[imageRows][imageCols] = malloc(imageCount * sizeof(*image));
+
+    printf("Loading data into memory...\n");
+    for(uint32_t imageIndex=0; imageIndex < imageCount; imageIndex++ )
+    {
+        for(uint32_t rowIndex=0; rowIndex < imageRows; rowIndex++)
+        {
+            for(uint32_t columIndex=0; columIndex < imageCols; columIndex++)
+            {
+                fread(&image[imageIndex][rowIndex][columIndex], 1, 1, trainingData);
+            }
+        }
+    }
+    printf("DONE\n");
+
+
+
+    /*     LOAD LABEL DATA     */
+    FILE * labelData = fopen("./labels.idx","rb");
+
+    if (labelData == NULL)
+    {
+        printf("\nERROR OPENING LABEL DATA!!!\n");
+    }
+    else
+    {
+        printf("Opened label data.\n");
+    }
+
+    uint32_t label_magicNumber, labelCount;
+    fread(&label_magicNumber, 4, 1, labelData);
+    fread(&labelCount, 4, 1, labelData);
+    label_magicNumber = __builtin_bswap32(label_magicNumber);
+    labelCount = __builtin_bswap32(labelCount);
+
+    printf("The label data contains:\n  %d labels\n", labelCount);
+    printf("Alloc label mem\n");
+    char labels[labelCount];
+
+    for(uint32_t labelIndex = 0; labelIndex < labelCount; labelIndex++)
+    {
+        fread(&labels[labelIndex], 1, 1, labelData);
+    }
+
+
+
+
+
 	
+	printf("Seeding B and R randomly...\n");
+	//Randomly INIT B and R matrix
+	seed3D(R);
+	//print3DArray(R);
+	seed2D(B);
+	//print2DArray(B);
+
+
+
+	
+	imageCount=10;
+	
+	// cost=ERROR+10;
 	while( cost > ERROR )
 	{
-		for (int sampleIndex = 0; sampleIndex < samples; sampleIndex++)
+		for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
 		{
 			// Main training loop
+		    // printf("\rLoaded sample %d into %d neurons.", imageIndex, mu);
+		    printf("\n Training epoch %d >> Sample %d\tError %6.0f\tCycle %d",epochs, imageIndex, cost, cycles);
 
 
 			//Fill starting X with samples, Y with labels
-			for (mu = 0; mu < N; mu++)
+			//Loop through every cell in the current sample, loading the image into the zeroth layer of the network and the label into the desired output.
+			//Set mu to zero
+			mu=0;
+			for (int rowIndex=0; rowIndex<imageRows; rowIndex++)
 			{
-				X[mu][0] = IN[sampleIndex][mu];
-				Y[mu]    = OUT[sampleIndex][0];
-
+				for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
+				{
+					X[mu][0] = image[imageIndex][columnIndex][rowIndex];
+					Y[mu] = labels[imageIndex];
+					mu++;
+				}
 			}
+
 
 
 			//Forward propogate
@@ -138,12 +227,107 @@ int main()
 			}
 
 
+			// back propagate
+			// k=0 layer
+			for (mu = 0; mu < N; mu++){
+				dB[mu][T] = -EPS*(X[mu][T]-Y[mu])*X[mu][T]*(1-X[mu][T]);
+				B[mu][T] = B[mu][T] + dB[mu][T];
+				for (nu = 0; nu < N; nu++){
+					R[mu][nu][T] = R[mu][nu][T] + dB[mu][T]*X[nu][T-1];
+				}
+			}
+
+
+
+			// k = 1...T-1 layers
+			for (int k = 1; k < T; k++){
+				for (mu = 0; mu < N; mu++){
+					dB[mu][T-k] = 0;
+					for (int a = 0; a < N; a++){
+						dB[mu][T-k] = dB[mu][T-k] + dB[a][T-k+1]*R[a][mu][T-k+1]*X[mu][T-k]*(1-X[mu][T-k]);
+					}
+					B[mu][T-k] = B[mu][T-k] + dB[mu][T-k];
+					for (nu = 0; nu < N; nu++){
+						R[mu][nu][T-k] = R[mu][nu][T-k] + dB[mu][T-k]*X[nu][T-k-1];
+					}
+				}
+			}
+
+			// calculate cost function
+			cost = 0;
+			for (mu = 0; mu < N; mu++){
+				cost = cost + (X[mu][T]-Y[mu])*(X[mu][T]-Y[mu]);
+			}
+			cost = 0.5*cost;
+			// increment number of back propagations
+			cycles++;
+
 
 
 		}
+		epochs++;
 	}
 	
 
+
+
+printf("We've come so far, and and tried so hard. \n In the end: \n");
+
+
+	/* code */
+
+  
+
+	for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
+	{
+		   // printf("\rLoaded sample %d into %d neurons.", imageIndex, mu);
+		   printf("\n Training epoch %d >> Sample %d\tError %6.5f\tCycle %d",epochs, imageIndex, cost, cycles);
+
+
+		//Fill starting X with samples, Y with labels
+		//Loop through every cell in the current sample, loading the image into the zeroth layer of the network and the label into the desired output.
+		//Set mu to zero
+		mu=0;
+		for (int rowIndex=0; rowIndex<imageRows; rowIndex++)
+		{
+			for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
+			{
+				X[mu][0] = image[imageIndex][columnIndex][rowIndex];
+				Y[mu] = labels[imageIndex];
+				mu++;
+			}
+		}
+
+		//Forward propogate
+		for (t=1; t <= T; t++)
+		{
+			for (mu = 0; mu < N; mu++)
+			{
+				Z[mu][t] = B[mu][t];
+				
+				for (nu = 0; nu < N; nu++)
+				{
+					Z[mu][t] = Z[mu][t] + R[mu][nu][t]*X[nu][t-1];
+				}
+
+				X[mu][t] = sigma(Z[mu][t]);
+			}
+				
+		}
+
+
+		printf("For sample %d, the result is ", imageIndex);
+		float sum=0;
+
+		for (int i = 0; i < N; i++)
+		{
+			sum += Y[i];
+		}
+		float output = sum/N;
+		printf("%f. And the answer is %d/n",output, labels[imageIndex]);
+
+
+	}
 
 
 
@@ -167,14 +351,6 @@ int main()
 
 
 
-	for(int i=0; i<4; i++)
-	{
-		for(int j=0; j<2; j++)
-		{
-			printf("%d\t",INPUT[i][j]);
-		}
-		printf("\n");
-	}
 
 
 }
