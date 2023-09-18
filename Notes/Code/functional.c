@@ -7,8 +7,11 @@
 #define TRAING_DATA_PATH "image.idx"
 
 
-float const EPS = 0.1;		//Learning rate
-float const ERROR = 0.01;	//Target ERROR
+float  EPS = 0.01;		//Learning rate
+float const ERROR = 0.03;	//Target ERROR
+float output=0;
+float miss=0;
+float epochMiss = 0;
 // float const ERROR = 0.0001;	//Target ERROR
 
 
@@ -18,7 +21,7 @@ float const ERROR = 0.01;	//Target ERROR
 //#define ERROR 0.0001
 // #define EPS 0.2
 #define N 784
-#define T 2
+#define T 3
 
 
 
@@ -38,6 +41,26 @@ uint64_t mu, nu, t=0, cycles=0, epochs=0;
 double sigma(double input)
 {
 	return (1/(1+exp(-input)));
+}
+
+void write3DArrayToFile(uint8_t array[N][N][T+1], const char* filename) {
+    FILE* file = fopen(filename, "wb");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+    fwrite(array, sizeof(uint8_t), N * N * (T+1), file);
+    fclose(file);
+}
+
+void write2DArrayToFile(uint8_t array[N][T+1], const char* filename) {
+    FILE* file = fopen(filename, "wb");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+    fwrite(array, sizeof(uint8_t), N * (T+1), file);
+    fclose(file);
 }
 
 
@@ -85,9 +108,6 @@ void seed2D(double array[N][T+1])
         }
     }
 }
-
-
-
 
 
 int main()
@@ -161,10 +181,6 @@ int main()
     }
 
 
-
-
-
-	
 	printf("Seeding B and R randomly...\n");
 	//Randomly INIT B and R matrix
 	seed3D(R);
@@ -174,12 +190,8 @@ int main()
 
 
 
-
-
-
-
-/*    PRINTING IMAGES TO SCREEN    */
-            printf("__________PRINTING TEST IMAGES TO SCREEN________\n");
+	/*    PRINTING IMAGES TO SCREEN    */
+    printf("__________PRINTING TEST IMAGES TO SCREEN________\n");
     uint32_t chosenImage = 1;
     for(int blah=0; blah < 10; blah++)
     {
@@ -207,20 +219,8 @@ int main()
     }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 	
-	imageCount=10000;
+	//imageCount=100;
 	
 	// cost=ERROR+10;
 	// while(epochs < 100)
@@ -230,7 +230,7 @@ int main()
 		{
 			// Main training loop
 		    // printf("\rLoaded sample %d into %d neurons.", imageIndex, mu);
-		    printf("\n Training epoch %ld >> Sample %d\tError %6.0f\tCycle %ld",epochs, imageIndex, cost, cycles);
+		    // printf("\n Training epoch %ld >> Sample %d\tError %6.0f\tCycle %ld",epochs, imageIndex, cost, cycles);
 
 
 			//Fill starting X with samples, Y with labels
@@ -241,15 +241,26 @@ int main()
 			{
 				for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
 				{
-					X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex];///255.00;
+					X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex]/255.00;
+
+     /*
+					if (image[imageIndex][rowIndex][columnIndex] > 127)
+					{
+						X[mu][0]=1;
+					}
+					else
+					{
+						X[mu][0]=0;
+					}*/
+
+					//X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex]/255.00;
+
 					// printf("X-Value %d at %d %d %d\n ", image[imageIndex][rowIndex][columnIndex], imageIndex, columnIndex, rowIndex);///255.00;
 					Y[mu] = (double)labels[imageIndex]/10.0;
-			        // printf("Neuron %ld=%f, L=%f ",mu, X[mu][0], Y[mu]);
+			        // printf("\nNeuron %ld=%f, L=%f ",mu, X[mu][0], Y[mu]);
 					mu++;
 				}
 			}
-
-
 
 			//Forward propogate
 			for (t=1; t <= T; t++)
@@ -280,7 +291,6 @@ int main()
 			}
 
 
-
 			// k = 1...T-1 layers
 			for (int k = 1; k < T; k++){
 				for (mu = 0; mu < N; mu++){
@@ -297,20 +307,15 @@ int main()
 
 			float sum=0;
 
-			for (int i = 0; i < N; i++)
+			for (int mu = 0; mu < N; mu++)
 			{
-				sum += X[i][T];
-				if (X[i][T] != 1.00)
-				{
-					// printf("END-Neuron %d=%f ",i, X[i][T]);
-					/* code */
-				}
-
+				sum += X[mu][T];
 			}
-			float output = sum/784.0;
-			float miss = abs(((float)labels[imageIndex]) - output);
+			output = sum/784.0;
+			miss = fabs(((float)labels[imageIndex]/10) - output);
+			epochMiss += miss;
 
-			printf("Guessed %f, answer %d, miss of %f", output, labels[imageIndex], miss );
+			// printf("Guessed %f, answer %d, miss of %f", output, labels[imageIndex], miss );
 			
 
 			// calculate cost function
@@ -325,15 +330,21 @@ int main()
 
 
 		}
+		printf("\n\n>>>>>>>>>>> EPOCH %d MISS AVERAGE: %f ",epochs, epochMiss/(float)imageCount);
+		epochMiss=0;
 		epochs++;
+		if (epochs > 50)
+		{
+			EPS = 0.001
+		}
 	}
 	
 
-return 0;
 
 
 printf("We've come so far, and and tried so hard. \n In the end: \n");
-
+write2DArrayToFile(B,"B.neural");
+write3DArrayToFile(R,"R.neural");
 
 	/* code */
 
