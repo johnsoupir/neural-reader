@@ -5,26 +5,17 @@
 #include <time.h>
 
 #define TRAING_DATA_PATH "image.idx"
-
+#define N 784
+#define T 3
 
 float  EPS = 0.01;		//Learning rate
 float const ERROR = 0.03;	//Target ERROR
 float output=0;
 float miss=0;
 float epochMiss = 0;
-// float const ERROR = 0.0001;	//Target ERROR
 
 
 // Allocate memory for B, R, 
-
-//#define ERROR 0.1
-//#define ERROR 0.0001
-// #define EPS 0.2
-#define N 784
-#define T 3
-
-
-
 double Y[N];
 double R[N][N][T+1];
 double B[N][T+1];
@@ -33,7 +24,6 @@ double Z[N][T+1];
 double dB[N][T+1];
 
 double cost = ERROR + 1.0;
-
 uint64_t mu, nu, t=0, cycles=0, epochs=0;
 
 
@@ -43,6 +33,7 @@ double sigma(double input)
 	return (1/(1+exp(-input)));
 }
 
+//Writes R to file
 void write3DArrayToFile(uint8_t array[N][N][T+1], const char* filename) {
     FILE* file = fopen(filename, "wb");
     if (file == NULL) {
@@ -53,6 +44,7 @@ void write3DArrayToFile(uint8_t array[N][N][T+1], const char* filename) {
     fclose(file);
 }
 
+//Writes B to file
 void write2DArrayToFile(uint8_t array[N][T+1], const char* filename) {
     FILE* file = fopen(filename, "wb");
     if (file == NULL) {
@@ -64,6 +56,7 @@ void write2DArrayToFile(uint8_t array[N][T+1], const char* filename) {
 }
 
 
+//Prints 3D array to screen
 void print3DArray(double array[N][N][T+1]) {
     for (uint32_t x = 0; x < N; x++) {
         printf("Layer %u:\n", x);
@@ -78,6 +71,7 @@ void print3DArray(double array[N][N][T+1]) {
 }
 
 
+//Prints 2D array to screen
 void print2DArray(double array[N][T+1]) {
     for (uint32_t x = 0; x < N; x++) {
         for (uint32_t y = 0; y < T+1; y++) {
@@ -87,6 +81,7 @@ void print2DArray(double array[N][T+1]) {
     }
 }
 
+//Fill 3D array with random numbers -0.5 to 0.5
 void seed3D(double array[N][N][T+1])
 {
     for (uint32_t x = 0; x < N; x++) {
@@ -98,8 +93,7 @@ void seed3D(double array[N][N][T+1])
     }
 }
 
-
-
+//Fill 2D array with random numbers -0.5 to 0.5
 void seed2D(double array[N][T+1])
 {
     for (uint32_t y = 0; y < N; y++) {
@@ -152,10 +146,8 @@ int main()
     printf("DONE\n");
 
 
-
     /*     LOAD LABEL DATA     */
     FILE * labelData = fopen("./labels.idx","rb");
-
     if (labelData == NULL)
     {
         printf("\nERROR OPENING LABEL DATA!!!\n");
@@ -164,7 +156,6 @@ int main()
     {
         printf("Opened label data.\n");
     }
-
     uint32_t label_magicNumber, labelCount;
     fread(&label_magicNumber, 4, 1, labelData);
     fread(&labelCount, 4, 1, labelData);
@@ -174,20 +165,16 @@ int main()
     printf("The label data contains:\n  %d labels\n", labelCount);
     printf("Alloc label mem\n");
     uint8_t labels[labelCount];
-
     for(uint32_t labelIndex = 0; labelIndex < labelCount; labelIndex++)
     {
         fread(&labels[labelIndex], 1, 1, labelData);
     }
 
 
+	/* Seed the B and R arrays with random numbers */
 	printf("Seeding B and R randomly...\n");
-	//Randomly INIT B and R matrix
 	seed3D(R);
-	// print3DArray(R);
 	seed2D(B);
-	//print2DArray(B);
-
 
 
 	/*    PRINTING IMAGES TO SCREEN    */
@@ -198,10 +185,10 @@ int main()
         chosenImage=blah;
         for(uint8_t printRow = 0; printRow < imageRows; printRow++)
         {
-            printf("\n");
+            // printf("\n");
             for(uint8_t printCol = 0; printCol < imageCols; printCol++)
             {
-					printf("Value %d at %d %d %d ", image[chosenImage][printRow][printCol], chosenImage, printCol, printRow);///255.00;
+					// printf("Value %d at %d %d %d ", image[chosenImage][printRow][printCol], chosenImage, printCol, printRow);///255.00;
                 if (image[chosenImage][printRow][printCol] > 128)
                 {
                     printf("▇\n");
@@ -215,13 +202,12 @@ int main()
             }
             printf("\n");
         }
-        printf("The solution is %d\n", labels[chosenImage]);
+        // printf("The solution is %d\n", labels[chosenImage]);
     }
 
 
 	
 	//imageCount=100;
-	
 	// cost=ERROR+10;
 	// while(epochs < 100)
 	while( cost > ERROR )
@@ -243,7 +229,7 @@ int main()
 				{
 					X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex]/255.00;
 
-     /*
+ 				    /*
 					if (image[imageIndex][rowIndex][columnIndex] > 127)
 					{
 						X[mu][0]=1;
@@ -256,6 +242,7 @@ int main()
 					//X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex]/255.00;
 
 					// printf("X-Value %d at %d %d %d\n ", image[imageIndex][rowIndex][columnIndex], imageIndex, columnIndex, rowIndex);///255.00;
+
 					Y[mu] = (double)labels[imageIndex]/10.0;
 			        // printf("\nNeuron %ld=%f, L=%f ",mu, X[mu][0], Y[mu]);
 					mu++;
@@ -279,7 +266,6 @@ int main()
 					
 			}
 
-
 			// back propagate
 			// k=0 layer
 			for (mu = 0; mu < N; mu++){
@@ -289,7 +275,6 @@ int main()
 					R[mu][nu][T] = R[mu][nu][T] + dB[mu][T]*X[nu][T-1];
 				}
 			}
-
 
 			// k = 1...T-1 layers
 			for (int k = 1; k < T; k++){
@@ -306,7 +291,6 @@ int main()
 			}
 
 			float sum=0;
-
 			for (int mu = 0; mu < N; mu++)
 			{
 				sum += X[mu][T];
@@ -330,25 +314,23 @@ int main()
 
 
 		}
+		
+		//Calculate average error across last epoch
 		printf("\n\n>>>>>>>>>>> EPOCH %d MISS AVERAGE: %f ",epochs, epochMiss/(float)imageCount);
 		epochMiss=0;
 		epochs++;
 		if (epochs > 50)
 		{
-			EPS = 0.001
+			EPS = 0.001;
 		}
-	}
+	}//End training
+
+	//Training is done. Now save the parameters to file.
+	write2DArrayToFile(B,"B.neural");
+	write3DArrayToFile(R,"R.neural");
 	
-
-
-
-printf("We've come so far, and and tried so hard. \n In the end: \n");
-write2DArrayToFile(B,"B.neural");
-write3DArrayToFile(R,"R.neural");
-
-	/* code */
-
-  
+	//Now we test!
+	printf("We've come so far, and and tried so hard. \n In the end: \n");
 
 	for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
 	{
@@ -405,31 +387,7 @@ write3DArrayToFile(R,"R.neural");
 		printf("%f. And the answer is %d/n",output, labels[imageIndex]);
 
 
-	}
+	}//End testing
 
-
-
-//WHILE LOOP -> NOT TRAINED
-
-	//FOR -> TRAINING SAMPLES
-	
-		//Load training sample into input layer
-		
-		//Forward propogate
-		
-		//Back propogate
-		
-		//Tune network
-		
-		//Get cost
-		
-		
-	
-
-
-
-
-
-
-}
+}//End main
 
