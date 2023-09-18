@@ -220,7 +220,7 @@ int main()
 
 
 	
-	imageCount=100;
+	imageCount=10000;
 	
 	// cost=ERROR+10;
 	// while(epochs < 100)
