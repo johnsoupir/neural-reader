@@ -8,11 +8,12 @@
 #define N 784
 #define T 3
 
-float  EPS = 0.01;		//Learning rate
-float const ERROR = 0.03;	//Target ERROR
+float  EPS = 0.001;		//Learning rate
+float const ERROR = 0.04;	//Target ERROR
 float output=0;
 float miss=0;
 float epochMiss = 0;
+float epochMissAverage = 0;
 
 
 // Allocate memory for B, R, 
@@ -175,9 +176,10 @@ int main()
 	printf("Seeding B and R randomly...\n");
 	seed3D(R);
 	seed2D(B);
-
-
 	/*    PRINTING IMAGES TO SCREEN    */
+
+/*
+
     printf("__________PRINTING TEST IMAGES TO SCREEN________\n");
     uint32_t chosenImage = 1;
     for(int blah=0; blah < 10; blah++)
@@ -205,13 +207,17 @@ int main()
         // printf("The solution is %d\n", labels[chosenImage]);
     }
 
-
+*/
+	printf("---> Training started! <----");
 	
-	//imageCount=100;
+	// imageCount=1000;
 	// cost=ERROR+10;
 	// while(epochs < 100)
-	while( cost > ERROR )
+	// while( cost > ERROR )
+	epochMissAverage = ERROR+1;
+	while( epochMissAverage > ERROR )
 	{
+		epochMiss=0;
 		for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
 		{
 			// Main training loop
@@ -316,13 +322,16 @@ int main()
 		}
 		
 		//Calculate average error across last epoch
-		printf("\n\n>>>>>>>>>>> EPOCH %d MISS AVERAGE: %f ",epochs, epochMiss/(float)imageCount);
-		epochMiss=0;
+		epochMissAverage=(epochMiss/(float)imageCount);
+		printf("\n\n>>>>>>>>>>> EPOCH %d MISS AVERAGE: %f ",epochs, epochMissAverage);
 		epochs++;
+		/*
+		
 		if (epochs > 50)
 		{
 			EPS = 0.001;
 		}
+		*/
 	}//End training
 
 	//Training is done. Now save the parameters to file.
