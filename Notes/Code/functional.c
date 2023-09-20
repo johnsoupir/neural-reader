@@ -36,25 +36,47 @@ double sigma(double input)
 	return (1/(1+exp(-input)));
 }
 
-//Writes R to file
-void write3DArrayToFile(uint8_t array[N][N][T+1], const char* filename) {
+// Writes a 3D array of floats to a file
+void write3DArrayToFile(double array[N][N][T+1], const char* filename) {
     FILE* file = fopen(filename, "wb");
     if (file == NULL) {
         printf("Error opening file!\n");
         return;
     }
-    fwrite(array, sizeof(uint8_t), N * N * (T+1), file);
+    fwrite(array, sizeof(double), N * N * (T+1), file);
     fclose(file);
 }
 
-//Writes B to file
-void write2DArrayToFile(uint8_t array[N][T+1], const char* filename) {
+// Writes a 2D array of floats to a file
+void write2DArrayToFile(double array[N][T+1], const char* filename) {
     FILE* file = fopen(filename, "wb");
     if (file == NULL) {
         printf("Error opening file!\n");
         return;
     }
-    fwrite(array, sizeof(uint8_t), N * (T+1), file);
+    fwrite(array, sizeof(double), N * (T+1), file);
+    fclose(file);
+}
+
+// Reads a 3D array of floats from a file
+void read3DArrayFromFile(double array[N][N][T+1], const char* filename) {
+    FILE* file = fopen(filename, "rb");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+    fread(array, sizeof(double), N * N * (T+1), file);
+    fclose(file);
+}
+
+// Reads a 2D array of floats from a file
+void read2DArrayFromFile(double array[N][T+1], const char* filename) {
+    FILE* file = fopen(filename, "rb");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+    fread(array, sizeof(double), N * (T+1), file);
     fclose(file);
 }
 
@@ -324,13 +346,14 @@ int main()
 			// increment number of back propagations
 			cycles++;
 
+//lol
 
 
 		}
 		
 		//Calculate average error across last epoch
 		epochMissAverage=(epochMiss/(float)imageCount);
-		printf("\n\n>>>>>>>>>>> EPOCH %d MISS AVERAGE: %f ",epochs, epochMissAverage);
+		printf("\n\n>>>>>>>>>>> EPOCH %ld MISS AVERAGE: %f ",epochs, epochMissAverage);
 		epochs++;
 		/*
 		
@@ -391,7 +414,7 @@ int main()
 
 		output = sum/784.0;
 		miss = fabs(((float)labels[imageIndex]/10) - output);
-		printf("\nFor sample %d, the guess was %f, answer %d. An error of %d", imageIndex, output*10, labels[imageIndex], miss);
+		printf("\nFor sample %d, the guess was %f, answer %d. An error of %f", imageIndex, output*10, labels[imageIndex], miss);
 
 
 	}//End testing
