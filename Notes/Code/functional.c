@@ -9,7 +9,9 @@
 #define T 3
 
 float  EPS = 0.001;		//Learning rate
-float const ERROR = 0.04;	//Target ERROR
+//works best so far. 1000 samples, 0.01 EPS, trained in 37 E : float  EPS = 0.01;		//Learning rate
+float const ERROR = 0.02;	//Target ERROR
+// float const ERROR = 0.04;	//Target ERROR
 float output=0;
 float miss=0;
 float epochMiss = 0;
@@ -88,7 +90,7 @@ void seed3D(double array[N][N][T+1])
     for (uint32_t x = 0; x < N; x++) {
         for (uint32_t y = 0; y < N; y++) {
             for (uint32_t z = 0; z < T+1; z++) {
-                array[x][y][z] = ((double) rand() / RAND_MAX) * 2.0 - 1.0;//(double) (rand() % 1000) / 1000.0;
+                array[x][y][z] = ((double) rand() / RAND_MAX) - 0.5;//(double) (rand() % 1000) / 1000.0;
             }
         }
     }
@@ -99,7 +101,7 @@ void seed2D(double array[N][T+1])
 {
     for (uint32_t y = 0; y < N; y++) {
         for (uint32_t x = 0; x < T+1; x++) {
-            array[y][x] = ((double) rand() / RAND_MAX) * 2.0 - 1.0;// (double) (rand() % 1000) / 1000.0;
+            array[y][x] = ((double) rand() / RAND_MAX) - 0.5;// (double) (rand() % 1000) / 1000.0;
         }
     }
 }
@@ -210,7 +212,7 @@ int main()
 */
 	printf("---> Training started! <----");
 	
-	// imageCount=1000;
+	imageCount=50000;
 	// cost=ERROR+10;
 	// while(epochs < 100)
 	// while( cost > ERROR )
@@ -265,6 +267,7 @@ int main()
 					for (nu = 0; nu < N; nu++)
 					{
 						Z[mu][t] = Z[mu][t] + R[mu][nu][t]*X[nu][t-1];
+						//This can be +=
 					}
 
 					X[mu][t] = sigma(Z[mu][t]);
@@ -279,6 +282,7 @@ int main()
 				B[mu][T] = B[mu][T] + dB[mu][T];
 				for (nu = 0; nu < N; nu++){
 					R[mu][nu][T] = R[mu][nu][T] + dB[mu][T]*X[nu][T-1];
+				    //This can be +=
 				}
 			}
 
@@ -305,7 +309,10 @@ int main()
 			miss = fabs(((float)labels[imageIndex]/10) - output);
 			epochMiss += miss;
 
-			// printf("Guessed %f, answer %d, miss of %f", output, labels[imageIndex], miss );
+			if (imageIndex % 1000 == 0)
+			{
+				printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f",imageIndex, output*10, labels[imageIndex], miss*10 );
+			}
 			
 
 			// calculate cost function
@@ -341,12 +348,10 @@ int main()
 	//Now we test!
 	printf("We've come so far, and and tried so hard. \n In the end: \n");
 
-	for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
+	imageCount=50100;
+	
+	for (int imageIndex = 50000; imageIndex < imageCount; imageIndex++)
 	{
-		   // printf("\rLoaded sample %d into %d neurons.", imageIndex, mu);
-		   printf("\n Training epoch %d >> Sample %d\tError %6.5f\tCycle %d",epochs, imageIndex, cost, cycles);
-
-
 		//Fill starting X with samples, Y with labels
 		//Loop through every cell in the current sample, loading the image into the zeroth layer of the network and the label into the desired output.
 		//Set mu to zero
@@ -378,22 +383,15 @@ int main()
 				
 		}
 
-
-		printf("For sample %d, the result is ", imageIndex);
 		float sum=0;
-
-		for (int i = 0; i < N; i++)
+		for (int mu = 0; mu < N; mu++)
 		{
-			sum += X[i][T];
-			if (X[i][T] != 1.00)
-			{
-				printf("END-Neuron %d=%f ",i, X[i][T]);
-				/* code */
-			}
-			
+			sum += X[mu][T];
 		}
-		float output = sum/784.0;
-		printf("%f. And the answer is %d/n",output, labels[imageIndex]);
+
+		output = sum/784.0;
+		miss = fabs(((float)labels[imageIndex]/10) - output);
+		printf("\nFor sample %d, the guess was %f, answer %d. An error of %d", imageIndex, output*10, labels[imageIndex], miss);
 
 
 	}//End testing
