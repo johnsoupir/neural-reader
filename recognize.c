@@ -4,14 +4,15 @@
 #include <math.h>
 #include <time.h>
 
-#define TRAING_DATA_PATH "image.idx"
+#define TESTING_DATA_PATH "TestData/t10k-images-idx3-ubyte/t10k-images.idx3-ubyte"
+#define TESTING_LABEL_PATH "TestData/t10k-labels-idx1-ubyte/t10k-labels.idx1-ubyte"
+
+#define B_PARAMETER_PATH "Parameters/B.neural"
+#define R_PARAMETER_PATH "Parameters/R.neural"
+
 #define N 784
 #define T 3
 
-float  EPS = 0.001;		//Learning rate
-//works best so far. 1000 samples, 0.01 EPS, trained in 37 E : float  EPS = 0.01;		//Learning rate
-float const ERROR = 0.02;	//Target ERROR
-// float const ERROR = 0.04;	//Target ERROR
 float output=0;
 float miss=0;
 float epochMiss = 0;
@@ -24,8 +25,6 @@ double R[N][N][T+1];
 double B[N][T+1];
 double X[N][T+1];
 double Z[N][T+1];
-double dB[N][T+1];
-double cost = ERROR + 1.0;
 uint64_t mu, nu, t=0, cycles=0, epochs=0;
 
 
@@ -129,7 +128,7 @@ void seed2D(double array[N][T+1])
 int main()
 {
     /*     LOAD IMAGE DATA     */
-    FILE * trainingData = fopen("./timage.idx", "rb");
+    FILE * trainingData = fopen(TESTING_DATA_PATH, "rb");
 
     if (trainingData == NULL)
     {
@@ -169,7 +168,7 @@ int main()
 
 
     /*     LOAD LABEL DATA     */
-    FILE * labelData = fopen("./tlabels.idx","rb");
+    FILE * labelData = fopen(TESTING_LABEL_PATH,"rb");
     if (labelData == NULL)
     {
         printf("\nERROR OPENING LABEL DATA!!!\n");
@@ -195,118 +194,56 @@ int main()
 
 	/* Seed the B and R arrays with random numbers */
 	printf("Loading B and R from file...\n");
-	read2DArrayFromFile(B,"B.neural");
-	read3DArrayFromFile(R,"R.neural");
+	read2DArrayFromFile(B,B_PARAMETER_PATH);
+	read3DArrayFromFile(R,R_PARAMETER_PATH);
 
-	// seed3D(R);
-	// seed2D(B);
-	/*    PRINTING IMAGES TO SCREEN    */
-
-/*
-
-    printf("__________PRINTING TEST IMAGES TO SCREEN________\n");
-    uint32_t chosenImage = 1;
-    for(int blah=0; blah < 10; blah++)
-    {
-        chosenImage=blah;
-        for(uint8_t printRow = 0; printRow < imageRows; printRow++)
-        {
-            // printf("\n");
-            for(uint8_t printCol = 0; printCol < imageCols; printCol++)
-            {
-					// printf("Value %d at %d %d %d ", image[chosenImage][printRow][printCol], chosenImage, printCol, printRow);///255.00;
-                if (image[chosenImage][printRow][printCol] > 128)
-                {
-                    printf("▇\n");
-                }
-                else
-                {
-                    printf(" \n");
-                }
-
-
-            }
-            printf("\n");
-        }
-        // printf("The solution is %d\n", labels[chosenImage]);
-    }
-
-*/
 	printf("---> Reading started! <----");
 	
-	// cost=ERROR+10;
-	// while(epochs < 100)
-	// while( cost > ERROR )
-		for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
+	for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
+	{
+		mu=0;
+		for (int rowIndex=0; rowIndex<imageRows; rowIndex++)
 		{
-			mu=0;
-			for (int rowIndex=0; rowIndex<imageRows; rowIndex++)
+			for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
 			{
-				for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
-				{
-					X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex]/255.00;
-					Y[mu] = (double)labels[imageIndex]/10.0;
-					mu++;
-				}
+				X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex]/255.00;
+				Y[mu] = (double)labels[imageIndex]/10.0;
+				mu++;
 			}
-
-			//Forward propogate
-			for (t=1; t <= T; t++)
-			{
-				for (mu = 0; mu < N; mu++)
-				{
-					Z[mu][t] = B[mu][t];
-					
-					for (nu = 0; nu < N; nu++)
-					{
-						Z[mu][t] = Z[mu][t] + R[mu][nu][t]*X[nu][t-1];
-						//This can be +=
-					}
-
-					X[mu][t] = sigma(Z[mu][t]);
-				}
-					
-			}
-
-
-			// back propagate
-			// k=0 layer
-			for (mu = 0; mu < N; mu++){
-				dB[mu][T] = -EPS*(X[mu][T]-Y[mu])*X[mu][T]*(1-X[mu][T]);
-				B[mu][T] = B[mu][T] + dB[mu][T];
-				for (nu = 0; nu < N; nu++){
-					R[mu][nu][T] = R[mu][nu][T] + dB[mu][T]*X[nu][T-1];
-				    //This can be +=
-				}
-			}
-
-
-			float sum=0;
-			for (int mu = 0; mu < N; mu++)
-			{
-				sum += X[mu][T];
-			}
-			output = sum/784.0;
-			miss = fabs(((float)labels[imageIndex]/10) - output);
-			epochMiss += miss;
-
-			if (imageIndex % 1000 == 0)
-			{
-				printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f",imageIndex, output*10, labels[imageIndex], miss*10 );
-			}
-			
-
-			// calculate cost function
-			cost = 0;
-			for (mu = 0; mu < N; mu++){
-				cost = cost + (X[mu][T]-Y[mu])*(X[mu][T]-Y[mu]);
-			}
-			cost = 0.5*cost;
-			// increment number of back propagations
-			cycles++;
 		}
 
-//End testing
+		//Forward propogate
+		for (t=1; t <= T; t++)
+		{
+			for (mu = 0; mu < N; mu++)
+			{
+				Z[mu][t] = B[mu][t];
+				
+				for (nu = 0; nu < N; nu++)
+				{
+					Z[mu][t] = Z[mu][t] + R[mu][nu][t]*X[nu][t-1];
+					//This can be +=
+				}
 
+				X[mu][t] = sigma(Z[mu][t]);
+			}
+				
+		}
+
+		float sum=0;
+		for (int mu = 0; mu < N; mu++)
+		{
+			sum += X[mu][T];
+		}
+		output = sum/784.0;
+		miss = fabs(((float)labels[imageIndex]/10) - output);
+		epochMiss += miss;
+
+		if (imageIndex % 1000 == 0)
+		{
+			printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f",imageIndex, output*10, labels[imageIndex], miss*10 );
+		}
+		cycles++;
+	}
 }//End main
 
