@@ -14,7 +14,11 @@
 #define B_PARAMETER_PATH "Parameters/B.neural"
 #define R_PARAMETER_PATH "Parameters/R.neural"
 
+#define B_PARAMETER_BACKUP "B_backup.neural"
+#define R_PARAMETER_BACKUP "R_backup.neural"
+
 bool oldDogNewTricks = false; //Continue training on top of existing parameters
+bool resume = false; //Retore from backup and continue training
 
 float  EPS = 0.001;		//Learning rate
 float const ERROR = 0.01;	//Target ERROR
@@ -227,6 +231,14 @@ int main()
 		read2DArrayFromFile(B,B_PARAMETER_PATH);
 		read3DArrayFromFile(R,R_PARAMETER_PATH);
 	}
+	else if (resume == true)
+	{
+		/* Load the B and R arrays from file */
+		printf("Loading backup of B and R from file...\n");
+		read2DArrayFromFile(B,B_PARAMETER_BACKUP);
+		read3DArrayFromFile(R,R_PARAMETER_BACKUP);
+
+	}
 	else
 	{
 		/* Seed the B and R arrays with random numbers */
@@ -271,8 +283,8 @@ int main()
 	printf("---> Training started! <----");
 	
 	epochMissAverage = ERROR+1;
-	// while( cost > ERROR )
-	while( epochMissAverage > ERROR )
+	while( cost > ERROR )
+	// while( epochMissAverage > ERROR )
 	{
 		epochMiss=0;
 		for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
@@ -355,10 +367,7 @@ int main()
 			miss = fabs(((double)labels[imageIndex]/10.0) - output);
 			epochMiss += miss;
 
-			if (imageIndex % 1000 == 0)
-			{
-				printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f",imageIndex, output*10, labels[imageIndex], miss*10 );
-			}
+			
 
 			// calculate cost function
 			cost = 0;
@@ -366,6 +375,11 @@ int main()
 				cost = cost + (X[mu][T]-Y[mu])*(X[mu][T]-Y[mu]);
 			}
 			cost = 0.5*cost;
+
+			if (imageIndex % 1000 == 0)
+			{
+				printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f, cost: %1.5f",imageIndex, output*10, labels[imageIndex], miss*10, cost );
+			}
 			// increment number of back propagations
 			cycles++;
 
@@ -374,6 +388,9 @@ int main()
 		//Calculate average error across last epoch
 		epochMissAverage=(epochMiss/(float)imageCount);
 		printf("\n\n>>>>>>>>>>> EPOCH %ld MISS AVERAGE: %f ",epochs, epochMissAverage);
+		printf("\nBacking up B and R...\n");
+		write2DArrayToFile(B,B_PARAMETER_BACKUP);
+		write3DArrayToFile(R,R_PARAMETER_BACKUP);
 		epochs++;
 		
 		//Variable learning rate. Unsure if helpful...
