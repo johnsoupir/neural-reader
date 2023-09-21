@@ -9,10 +9,10 @@ TARGETS = train recognize
 # Default target
 all: $(TARGETS)
 
-train: train.o
+train: train.o arrayTools.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-recognize: recognize.o
+recognize: recognize.o arrayTools.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c
