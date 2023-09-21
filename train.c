@@ -14,7 +14,7 @@
 #define B_PARAMETER_PATH "Parameters/B.neural"
 #define R_PARAMETER_PATH "Parameters/R.neural"
 
-bool oldDogNewTricks = true; //Continue training on top of existing parameters
+bool oldDogNewTricks = false; //Continue training on top of existing parameters
 
 float  EPS = 0.001;		//Learning rate
 float const ERROR = 0.01;	//Target ERROR
