@@ -34,7 +34,7 @@ To train the network run train
 The network can continue training from a previous parameter file by setting the "oldDogNewTricks" variable to true.
 
 
-To recognize using the partly pre-trained parameters run recognize
+To recognize using the pre-trained parameters run recognize
 
 ```
 ./recognize
