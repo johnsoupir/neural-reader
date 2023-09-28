@@ -26,6 +26,7 @@ double B[N][T+1];
 double X[N][T+1];
 double Z[N][T+1];
 uint64_t mu, nu, t=0, cycles=0, epochs=0;
+uint32_t correctCount = 0;
 
 
 //Sigma function
@@ -235,15 +236,23 @@ int main()
 		{
 			sum += X[mu][T];
 		}
-		output = sum/784.0;
+		output = sum/(double)N;
 		miss = fabs(((float)labels[imageIndex]/10) - output);
 		epochMiss += miss;
 
-		if (imageIndex % 1000 == 0)
+        //DUH
+        if (round(output*10) == labels[imageIndex])
+        {
+            correctCount++;
+        }
+
+		if (imageIndex % 100 == 0)
 		{
 			printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f",imageIndex, output*10, labels[imageIndex], miss*10 );
 		}
 		cycles++;
 	}
+    printf("\nCorrect answers: %d of %d\n", correctCount, imageCount);
+    printf("\nNetwork has %3.2f %% accuracy\n", 100.0*((float)correctCount/(float)imageCount));
 }//End main
 
