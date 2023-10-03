@@ -41,7 +41,7 @@ double cost = ERROR + 1.0;
 uint64_t mu, nu, t=0, cycles=0, epochs=0;
 
 
-//Sigma avtivation function. Returns the next X.
+//Sigma activation function. Returns the next X.
 double sigma(double input)
 {
 	return (1/(1+exp(-input)));
