@@ -17,17 +17,20 @@
 #define B_PARAMETER_BACKUP "B_backup.neural"
 #define R_PARAMETER_BACKUP "R_backup.neural"
 
-bool oldDogNewTricks = false; //Continue training on top of existing parameters
-bool resume = false; //Retore from backup and continue training
+bool oldDogNewTricks = false; 	//Continue training on top of existing parameters
+bool resume = false; 			//Retore from backup and continue training
 
-float  EPS = 0.001;		//Learning rate
-float const ERROR = 0.01;	//Target ERROR
+float  EPS = 0.01;				//Learning rate
+float const ERROR = 0.001;		//Target ERROR
 
 float output=0;
 float miss=0;
 float epochMiss = 0;
 float epochMissAverage = 0;
 
+clock_t start, epochStart, checkpointStart;
+char formattedTime[9];
+uint32_t secondsSinceStart=0;
 
 //Declare arrays to hold neural net
 double Y[N];
@@ -45,6 +48,45 @@ uint64_t mu, nu, t=0, cycles=0, epochs=0;
 double sigma(double input)
 {
 	return (1/(1+exp(-input)));
+}
+
+//Sigma activation function. Returns the next X.
+double tanh(double input)
+{
+	return (2/(1+exp(-input*2)));
+}
+
+double mish(double input)
+{
+	return (input * tanh(log1p(exp(input))));
+}
+
+double timeSince(clock_t checkpoint) {
+    clock_t current = clock();
+    double elapsed_time = ((double) (current - checkpoint)) / CLOCKS_PER_SEC;
+    return elapsed_time;
+}
+
+bool logToFile(const char *filename, const char *content) {
+    FILE *logFile = fopen(filename, "a");
+    if (logFile == NULL) {
+        fprintf(stderr, "Could not open file %s for writing.\n", filename);
+        return false;
+    }
+    
+    fprintf(logFile, "%s\n", content);
+    fclose(logFile);
+    return true;
+}
+
+bool clearLog(const char *filename) {
+    if (remove(filename) == 0) {
+        printf("%s cleared successfully.\n", filename);
+        return true;
+    } else {
+        fprintf(stderr, "Error deleting the file %s.\n", filename);
+        return false;
+    }
 }
 
 // Writes a 3D array of doubles to a file
@@ -144,6 +186,7 @@ void seed2D(double array[N][T+1])
 int main()
 {
 	srand(time(NULL)); //Seed random generator with time
+	start = clock(); //Set the start point for the timer
 
     /*     LOAD IMAGE DATA     */
     FILE * trainingData = fopen(TRAINING_DATA_PATH, "rb"); //Open training images
@@ -221,8 +264,6 @@ int main()
         fread(&labels[labelIndex], 1, 1, labelData);
     }
 
-
-
 	//Choose to use blank B and R, or continue training from file
 	if (oldDogNewTricks == true)
 	{
@@ -287,15 +328,12 @@ int main()
 	// while( epochMissAverage > ERROR )
 	{
 		epochMiss=0;
+		epochStart = clock();
+		
+		// Training loop
 		for (int imageIndex = 0; imageIndex < imageCount; imageIndex++)
 		{
-			// Main training loop
-		    // printf("\rLoaded sample %d into %d neurons.", imageIndex, mu);
-		    // printf("\n Training epoch %ld >> Sample %d\tError %6.0f\tCycle %ld",epochs, imageIndex, cost, cycles);
-
-
 			/*   Fill starting X with sample, Y with label.   */
-
 			mu=0; //Start mu at zero
 			//Loop through every cell in the current sample, loading the image into the zeroth layer of the network and the label into the desired output.
 			for (int rowIndex=0; rowIndex<imageRows; rowIndex++)
@@ -303,9 +341,7 @@ int main()
 				for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
 				{
 					X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex]/255.00;
-					// printf("X-Value %d at %d %d %d\n ", image[imageIndex][rowIndex][columnIndex], imageIndex, columnIndex, rowIndex);///255.00;
 					Y[mu] = (double)labels[imageIndex]/10.0;
-			        // printf("\nNeuron %ld=%f, L=%f ",mu, X[mu][0], Y[mu]);
 					mu++;
 				}
 			}
@@ -319,23 +355,21 @@ int main()
 					
 					for (nu = 0; nu < N; nu++)
 					{
-						Z[mu][t] = Z[mu][t] + R[mu][nu][t]*X[nu][t-1];
-						//This can be +=
+						Z[mu][t] += R[mu][nu][t]*X[nu][t-1];
 					}
 					X[mu][t] = sigma(Z[mu][t]);
 				}
 					
 			}
 
-			// back propagate
+			//Back propagate
 			for (mu = 0; mu < N; mu++)
 			{
 				dB[mu][T] = -EPS*(X[mu][T]-Y[mu])*X[mu][T]*(1-X[mu][T]);
 				B[mu][T] = B[mu][T] + dB[mu][T];
 				for (nu = 0; nu < N; nu++)
 				{
-					R[mu][nu][T] = R[mu][nu][T] + dB[mu][T]*X[nu][T-1];
-				    //This can be +=
+					R[mu][nu][T] += dB[mu][T]*X[nu][T-1];
 				}
 			}
 
@@ -358,16 +392,14 @@ int main()
 			}
 
 			//Calculate the average error over all output neurons
-			float sum=0;
+			float sumOfOutputLayer=0;
 			for (int mu = 0; mu < N; mu++)
 			{
-				sum += X[mu][T]; //Add up all the neurons
+				sumOfOutputLayer += X[mu][T]; //Add up all the neurons
 			}
-			output = sum/(double)N;
+			output = sumOfOutputLayer/(double)N;
 			miss = fabs(((double)labels[imageIndex]/10.0) - output);
 			epochMiss += miss;
-
-			
 
 			// calculate cost function
 			cost = 0;
@@ -378,7 +410,11 @@ int main()
 
 			if (imageIndex % 1000 == 0)
 			{
-				printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f, cost: %1.5f",imageIndex, output*10, labels[imageIndex], miss*10, cost );
+				secondsSinceStart = timeSince(start);
+				sprintf(formattedTime, "%02d:%02d:%02d", secondsSinceStart / 3600, (secondsSinceStart % 3600) / 60, secondsSinceStart % 60); 
+                //printf("%d seconds since start is equal to %s (HH:MM:SS format)\n", secondsSinceStart, formattedTime);
+				printf("\n%s | Sample %d -> Guessed %1.5f, answer %d, miss of %1.5f, cost: %1.5f", 
+						formattedTime, imageIndex, output*10, labels[imageIndex], miss*10, cost );
 			}
 			// increment number of back propagations
 			cycles++;
@@ -391,15 +427,13 @@ int main()
 		printf("\nBacking up B and R...\n");
 		write2DArrayToFile(B,B_PARAMETER_BACKUP);
 		write3DArrayToFile(R,R_PARAMETER_BACKUP);
-		epochs++;
 		
-		//Variable learning rate. Unsure if helpful...
-		/*
-		if (epochs > 50)
-		{
-			EPS = 0.001;
-		}
-		*/
+		//Log stats
+	    char logBuffer[100];
+        sprintf(logBuffer, "%f, %f\n", epochMissAverage, timeSince(start));
+        //logToFile("learningCurve.log", logBuffer);
+
+		epochs++;
 
 	}//End training
 
@@ -407,56 +441,11 @@ int main()
 	write2DArrayToFile(B,"B.neural");
 	write3DArrayToFile(R,"R.neural");
 	
-	//Now we test!
-	printf("\nWe've come so far, and and tried so hard. In the end: \n");
-
-	imageCount=50100;
-	
-	for (int imageIndex = 50000; imageIndex < imageCount; imageIndex++)
-	{
-		//Fill starting X with samples, Y with labels
-		//Loop through every cell in the current sample, loading the image into the zeroth layer of the network and the label into the desired output.
-		//Set mu to zero
-		mu=0;
-		for (int rowIndex=0; rowIndex<imageRows; rowIndex++)
-		{
-			for (int columnIndex=0; columnIndex<imageCols; columnIndex++)
-			{
-				X[mu][0] = (double)image[imageIndex][rowIndex][columnIndex];
-				Y[mu] = (double)labels[imageIndex];
-				mu++;
-			}
-		}
-
-		//Forward propogate
-		for (t=1; t <= T; t++)
-		{
-			for (mu = 0; mu < N; mu++)
-			{
-				Z[mu][t] = B[mu][t];
-				
-				for (nu = 0; nu < N; nu++)
-				{
-					Z[mu][t] = Z[mu][t] + R[mu][nu][t]*X[nu][t-1];
-				}
-
-				X[mu][t] = sigma(Z[mu][t]);
-			}
-				
-		}
-
-		float sum=0;
-		for (int mu = 0; mu < N; mu++)
-		{
-			sum += X[mu][T];
-		}
-
-		output = sum/784.0;
-		miss = fabs(((float)labels[imageIndex]/10) - output);
-		printf("\nFor sample %d, the guess was %f, answer %d. An error of %f", imageIndex, output*10, labels[imageIndex], miss);
-
-
-	}//End testing
+	printf("#####################################################\n");
+	printf("\n>>>>>>>>>>>>>>> TRAINING COMPLETE!!! <<<<<<<<<<<<<<<\n");
+	printf("After %ld epochs the network reached %2.2f average miss.\n");
+	printf("The results were saved to ./B.neural & ./R.neural ");
+	printf("#####################################################\n");
 
 }//End main
 
