@@ -10,6 +10,8 @@
 
 #define B_PARAMETER_PATH "Parameters/B.neural"
 #define R_PARAMETER_PATH "Parameters/R.neural"
+//#define B_PARAMETER_PATH "B_backup.neural"
+//#define R_PARAMETER_PATH "R_backup.neural"
 
 #define N 784
 #define T 3
@@ -272,11 +274,10 @@ int main()
 
 
 	}
-    write2DArrayToFile(X, "X.map");
-
-    
 
 
+    printf("\n____________________________________________\n");
+    printf("\n             ERROR PERCENT PER DIGIT\n");
     printf("\n____________________________________________\n");
     for(int digit=0; digit<=9; digit++)
     {
@@ -292,6 +293,7 @@ int main()
         }
         printf("\n");
     }
+    printf("\n____________________________________________\n");
 
 
     printf("\nCorrect answers: %d of %d\n", correctCount, imageCount);
