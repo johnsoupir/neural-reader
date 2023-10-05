@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <time.h>
+#include <stdbool.h>
 
 #define TESTING_DATA_PATH "TestData/t10k-images-idx3-ubyte/t10k-images.idx3-ubyte"
 #define TESTING_LABEL_PATH "TestData/t10k-labels-idx1-ubyte/t10k-labels.idx1-ubyte"
@@ -25,6 +26,7 @@ double R[N][N][T+1];
 double B[N][T+1];
 double X[N][T+1];
 double Z[N][T+1];
+int errorCount[10];
 uint64_t mu, nu, t=0, cycles=0, epochs=0;
 uint32_t correctCount = 0;
 
@@ -33,6 +35,19 @@ uint32_t correctCount = 0;
 double sigma(double input)
 {
 	return (1/(1+exp(-input)));
+}
+
+//Logs string to file
+bool logToFile(const char *filename, const char *content) {
+    FILE *logFile = fopen(filename, "a");
+    if (logFile == NULL) {
+        fprintf(stderr, "Could not open file %s for writing.\n", filename);
+        return false;
+    }
+    
+    fprintf(logFile, "%s\n", content);
+    fclose(logFile);
+    return true;
 }
 
 // Writes a 3D array of floats to a file
@@ -240,10 +255,13 @@ int main()
 		miss = fabs(((float)labels[imageIndex]/10) - output);
 		epochMiss += miss;
 
-        //DUH
         if (round(output*10) == labels[imageIndex])
         {
             correctCount++;
+        }
+        else
+        {
+            errorCount[labels[imageIndex]]++;
         }
 
 		if (imageIndex % 100 == 0)
@@ -251,7 +269,31 @@ int main()
 			printf("\nSample %d -> Guessed %1.5f, answer %d, miss of %1.5f",imageIndex, output*10, labels[imageIndex], miss*10 );
 		}
 		cycles++;
+
+
 	}
+    write2DArrayToFile(X, "X.map");
+
+    
+
+
+    printf("\n____________________________________________\n");
+    for(int digit=0; digit<=9; digit++)
+    {
+        int numberOfWrongAnswers = labelCount-correctCount;
+        double percentOfErrors = errorCount[digit]/(double)numberOfWrongAnswers;
+        int bars = percentOfErrors * 300;
+
+        printf("[%d] ",digit);
+        // printf("%d, %f",digit, 10*percentOfErrors);
+        for(int bar=0; bar<=bars; bar++)
+        {
+            printf("🮐");
+        }
+        printf("\n");
+    }
+
+
     printf("\nCorrect answers: %d of %d\n", correctCount, imageCount);
     printf("\nNetwork has %3.2f %% accuracy\n", 100.0*((float)correctCount/(float)imageCount));
 }//End main
