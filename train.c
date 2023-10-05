@@ -383,7 +383,6 @@ int main()
 			{
 				secondsSinceStart = timeSince(start);
 				sprintf(formattedTime, "%02d:%02d:%02d", secondsSinceStart / 3600, (secondsSinceStart % 3600) / 60, secondsSinceStart % 60); 
-                //printf("%d seconds since start is equal to %s (HH:MM:SS format)\n", secondsSinceStart, formattedTime);
 				printf("\n%s | Sample %d -> Guessed %1.5f, answer %d, miss of %1.5f, cost: %1.5f", 
 						formattedTime, imageIndex, output*10, labels[imageIndex], miss*10, cost );
 			}
