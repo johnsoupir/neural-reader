@@ -43,30 +43,32 @@ double dB[N][T+1];
 double cost = ERROR + 1.0;
 uint64_t mu, nu, t=0, cycles=0, epochs=0;
 
-
 //Sigma activation function. Returns the next X.
 double sigma(double input)
 {
 	return (1/(1+exp(-input)));
 }
 
-//Sigma activation function. Returns the next X.
+//Tahn activation function.
 double tanh(double input)
 {
 	return (2/(1+exp(-input*2)));
 }
 
+//Mish activation function
 double mish(double input)
 {
 	return (input * tanh(log1p(exp(input))));
 }
 
+//Returns seconds since a given time
 double timeSince(clock_t checkpoint) {
     clock_t current = clock();
     double elapsed_time = ((double) (current - checkpoint)) / CLOCKS_PER_SEC;
     return elapsed_time;
 }
 
+//Logs string to file
 bool logToFile(const char *filename, const char *content) {
     FILE *logFile = fopen(filename, "a");
     if (logFile == NULL) {
@@ -79,6 +81,7 @@ bool logToFile(const char *filename, const char *content) {
     return true;
 }
 
+//Clears a given log file
 bool clearLog(const char *filename) {
     if (remove(filename) == 0) {
         printf("%s cleared successfully.\n", filename);
@@ -163,7 +166,7 @@ void seed3D(double array[N][N][T+1])
     for (uint32_t x = 0; x < N; x++) {
         for (uint32_t y = 0; y < N; y++) {
             for (uint32_t z = 0; z < T+1; z++) {
-                array[x][y][z] = ((double) rand() / RAND_MAX) - 0.5;//(double) (rand() % 1000) / 1000.0;
+                array[x][y][z] = (((double) rand() / RAND_MAX) - 0.5)/0.5;//(double) (rand() % 1000) / 1000.0;
             }
         }
     }
@@ -174,7 +177,7 @@ void seed2D(double array[N][T+1])
 {
     for (uint32_t y = 0; y < N; y++) {
         for (uint32_t x = 0; x < T+1; x++) {
-            array[y][x] = ((double) rand() / RAND_MAX) - 0.5;// (double) (rand() % 1000) / 1000.0;
+            array[y][x] = (((double) rand() / RAND_MAX) - 0.5)/0.5;// (double) (rand() % 1000) / 1000.0;
         }
     }
 }
@@ -288,38 +291,6 @@ int main()
 		seed2D(B);
 	}
 
-
-	/*    PRINTING IMAGES TO SCREEN    */
-	/*
-
-    printf("__________PRINTING TEST IMAGES TO SCREEN________\n");
-    uint32_t chosenImage = 1;
-    for(int blah=0; blah < 10; blah++)
-    {
-        chosenImage=blah;
-        for(uint8_t printRow = 0; printRow < imageRows; printRow++)
-        {
-            // printf("\n");
-            for(uint8_t printCol = 0; printCol < imageCols; printCol++)
-            {
-					// printf("Value %d at %d %d %d ", image[chosenImage][printRow][printCol], chosenImage, printCol, printRow);///255.00;
-                if (image[chosenImage][printRow][printCol] > 128)
-                {
-                    printf("▇\n");
-                }
-                else
-                {
-                    printf(" \n");
-                }
-
-
-            }
-            printf("\n");
-        }
-        // printf("The solution is %d\n", labels[chosenImage]);
-    }
-
-	*/
 
 	printf("---> Training started! <----");
 	
